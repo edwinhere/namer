@@ -6,6 +6,12 @@ A PyTorch transformer model that converts numbers to their English names.
 
 This project was **vibe coded** — meaning it was collaboratively built using AI assistance (specifically the [pi coding agent](https://github.com/earendil-works/pi) harness) through iterative conversation, exploration, and refinement. The codebase reflects a natural evolution of ideas, from initial concept to working transformer model, with AI handling implementation details, suggestions, and code generation based on high-level direction.
 
+## 🤗 HuggingFace Model
+
+A pre-trained version of this model is available on HuggingFace:
+
+**🔗 https://huggingface.co/edwinhere/namer**
+
 ## Features
 
 - **Transformer architecture** with cross-attention mechanism
