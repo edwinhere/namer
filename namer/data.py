@@ -143,10 +143,20 @@ class InfiniteNamerDataset(IterableDataset):
         samples.extend(range(0, self.include_all_until + 1))
 
         # Exact powers of 1000 (1,000; 1,000,000; 1,000,000,000; etc.)
+        # and numbers just after powers of 1000 (e.g., 1,000,001; 1,000,042)
+        # These are edge cases with many zeros that the model needs to learn
         power = 1000
         while power <= self.max_int:
             if power > self.include_all_until:  # Avoid duplicates
                 samples.append(power)
+            
+            # Add numbers just after this power of 1000 (up to 100 samples)
+            # This helps the model learn "one million one", "one billion one", etc.
+            for offset in range(1, 101):
+                n = power + offset
+                if n <= self.max_int and n > self.include_all_until:
+                    samples.append(n)
+            
             power *= 1000
 
         return samples

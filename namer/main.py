@@ -107,8 +107,10 @@ def train_command(
     guaranteed_count = 100000  # 0-99,999
     powers_of_1000 = [10**3, 10**6, 10**9, 10**12, 10**15, 10**18]
     extra_powers = sum(1 for p in powers_of_1000 if p > 99999 and p <= max_int)
-    total_guaranteed = guaranteed_count + extra_powers
-    print(f"Guaranteed samples: {total_guaranteed:,} (0-99,999 + {extra_powers} powers of 1000)")
+    # Numbers just after powers of 1000 (100 samples per power, but only those > 99999)
+    after_power_samples = sum(min(100, max_int - p) for p in powers_of_1000 if p > 99999 and p < max_int)
+    total_guaranteed = guaranteed_count + extra_powers + after_power_samples
+    print(f"Guaranteed samples: {total_guaranteed:,} (0-99,999 + {extra_powers} powers of 1000 + {after_power_samples} post-power edge cases)")
 
     # Create model
     model = NamerTransformer(
@@ -143,10 +145,10 @@ def train_command(
 
     test_numbers = [
         0, 42, 123, 1000, 999999,  # Small numbers
-        1000000, 999999999,  # Millions
-        1000000000, 999999999999,  # Billions, Trillions
-        1000000000000, 999999999999999,  # Trillions, Quadrillions
-        1000000000000000,  # Quintillion boundary
+        1000000, 1000001, 1000042, 999999999,  # Millions + edge cases with zeros
+        1000000000, 1000000001, 999999999999,  # Billions + edge cases
+        1000000000000, 1000000000001, 999999999999999,  # Trillions + edge cases
+        1000000000000000, 1000000000000001,  # Quadrillions + edge cases
     ]
     # Add INT64_MAX if training for that range
     if max_int >= INT64_MAX:

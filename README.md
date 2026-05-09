@@ -150,6 +150,7 @@ The model uses **stratified sampling** during training to ensure balanced repres
 **Guaranteed Training Samples:**
 - All integers from 0 to 99,999 (100,000 samples)
 - Exact powers of 1000: 1,000; 1,000,000; 1,000,000,000; 1,000,000,000,000; 1,000,000,000,000,000
+- Numbers just after powers of 1000 (e.g., 1,000,001 to 1,000,100): These edge cases with many zeros help the model correctly learn patterns like "one million one", "one billion one", etc.
 
 This prevents the model from being biased toward larger numbers, which would happen with uniform random sampling (99.9% of 0-1T range is >1M).
 
@@ -200,10 +201,23 @@ The training uses stratified sampling by default with guaranteed samples. To mod
 - **Training**: Uniform random sampling
 - **Max output length**: 20 tokens
 
+## Improvements in v3.1
+
+### Fixed: Numbers with Many Zeroes
+The model now correctly handles numbers immediately following powers of 1000 (e.g., 1,000,001 → "one million one", 1,000,000,001 → "one billion one"). This was achieved by adding **500 additional guaranteed training samples** - 100 numbers after each major power of 1000 (thousand, million, billion, trillion, quadrillion).
+
+| Number | Output |
+|--------|--------|
+| 1,000,001 | one million one ✓ |
+| 1,000,042 | one million forty two ✓ |
+| 1,000,000,001 | one billion one ✓ |
+| 1,000,000,000,001 | one trillion one ✓ |
+| 1,000,000,000,000,001 | one quadrillion one ✓ |
+
 ## Limitations
 
-- **Exact powers of 1000 above million**: The model may occasionally produce extra words (e.g., "one trillion billion" instead of "one trillion") for exact powers of 1000 at the billions, trillions, and quadrillions scale. This is a known edge case in the EOS prediction.
-- **Zero handling**: Edge case in inference may produce empty output.
+- **Exact powers of 1000 above million**: The model may occasionally produce extra words for exact powers at higher scales (e.g., "one million million" instead of "one million" for 1,000,000). This is an edge case in EOS prediction at trillion+ scales.
+- **Zero handling**: Edge case in inference may produce empty output for input 0.
 - **Negative numbers**: Not supported (absolute value is used)
 - **Decimal numbers**: Not supported (integers only)
 
