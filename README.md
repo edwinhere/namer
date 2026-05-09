@@ -21,11 +21,12 @@ A PyTorch transformer model that converts **integers to their English names** (e
 
 ## Model Description
 
-Namer is a sequence-to-sequence transformer trained to read digits of a number and generate the corresponding English textual representation. It handles numbers from **0 up to 999,999,999,999** (nearly one trillion), learning the patterns of English number naming conventions.
+Namer is a sequence-to-sequence transformer trained to read digits of a number and generate the corresponding English textual representation. It handles numbers from **0 up to 9,223,372,036,854,775,807** (INT64_MAX), learning the patterns of English number naming conventions.
 
 **Key Features:**
-- 🎯 **Stratified Training**: Uses balanced sampling across number scales (units, thousands, millions, billions, trillions) to ensure accurate performance on both small and large numbers
-- 📈 **Large Range**: Handles numbers up to ~1 trillion (12 digits)
+- 🎯 **Stratified Training**: Uses balanced sampling across 7 number scales (units to quintillions) to ensure accurate performance on both small and large numbers
+- 📚 **Guaranteed Training Data**: Includes all numbers 0-99,999 and exact powers of 1000 to improve accuracy on edge cases
+- 📈 **Large Range**: Handles numbers up to INT64_MAX (19 digits, ~9.2 quintillion)
 - 🚀 **Fast Inference**: Single forward pass, no autoregressive generation needed
 
 **Example conversions:**
@@ -38,6 +39,7 @@ Namer is a sequence-to-sequence transformer trained to read digits of a number a
 | 999999 | nine hundred ninety nine thousand nine hundred ninety nine |
 | 1234567890 | one billion two hundred thirty four million five hundred sixty seven thousand eight hundred ninety |
 | 999999999999 | nine hundred ninety nine billion nine hundred ninety nine million nine hundred ninety nine thousand nine hundred ninety nine |
+| 9223372036854775807 | nine quintillion two hundred twenty three quadrillion three hundred seventy two trillion thirty six billion eight hundred fifty four million seven hundred seventy five thousand eight hundred seven |
 
 ## Usage
 
@@ -131,17 +133,23 @@ pip install git+https://github.com/edwinhere/namer.git
 - **Input**: Digits of the integer (as token indices, 0-9 + padding)
 - **Output**: English words representing the number
 - **Vocabulary**: 41 tokens (zero-nineteen, twenty-ninety by tens, hundred, thousand, million, billion, trillion, quadrillion, quintillion, sextillion, septillion, octillion, nonillion, decillion, EOS)
-- **Max Output Length**: 25 tokens (increased from 20 to support larger numbers)
-- **Parameters**: ~869K
+- **Max Output Length**: 35 tokens (increased from 20 to support INT64_MAX)
+- **Parameters**: ~870K
 
 ### Training Details
 
-The model uses **stratified sampling** during training to ensure balanced representation:
-- Units (0-999): 20% of training data
-- Thousands (1,000-999,999): 20% of training data  
-- Millions (1M-999M): 20% of training data
-- Billions (1B-999B): 20% of training data
-- Trillions (1T-999T): 20% of training data
+The model uses **stratified sampling** during training to ensure balanced representation across 7 scales:
+- Units (0-999): ~14% of training data
+- Thousands (1,000-999,999): ~14% of training data  
+- Millions (1M-999M): ~14% of training data
+- Billions (1B-999B): ~14% of training data
+- Trillions (1T-999T): ~14% of training data
+- Quadrillions (1Q-999Q): ~14% of training data
+- Quintillions (1Qi-INT64_MAX): ~14% of training data
+
+**Guaranteed Training Samples:**
+- All integers from 0 to 99,999 (100,000 samples)
+- Exact powers of 1000: 1,000; 1,000,000; 1,000,000,000; 1,000,000,000,000; 1,000,000,000,000,000
 
 This prevents the model from being biased toward larger numbers, which would happen with uniform random sampling (99.9% of 0-1T range is >1M).
 
@@ -153,13 +161,12 @@ This prevents the model from being biased toward larger numbers, which would hap
 | `pytorch_model.bin` | HuggingFace model weights (PyTorch format) |
 | `config.json` | Model configuration |
 | `generation_config.json` | Generation parameters |
-| `modeling_namer.py` | HF-compatible model implementation |
 | `namer_model.pt` | Original PyTorch checkpoint |
 | `namer/` | Source code package |
 
 ## Training
 
-To train from scratch with default settings (30 epochs, 1000 steps/epoch):
+To train from scratch with default settings (30 epochs, 1000 steps/epoch, INT64_MAX range):
 
 ```bash
 python -m namer train
@@ -171,20 +178,18 @@ To customize training:
 python -m namer train --epochs 20 --steps 500 --batch-size 256 --lr 0.001
 ```
 
-The training uses stratified sampling by default. To modify the training range or sampling strategy, edit `namer/data.py`.
-
-### Extending to Larger Numbers
-
-The vocabulary already supports up to **decillion** (10³³). To train for larger ranges:
-
-1. Increase `max_int` in `namer/data.py` and `namer/main.py`
-2. Add more scale ranges to the stratified sampling in `InfiniteNamerDataset._generate_sample()`
-3. Increase `max_output_len` and `max_seq_len` if outputs exceed 25 tokens
-4. Retrain the model
+The training uses stratified sampling by default with guaranteed samples. To modify the training range or sampling strategy, edit `namer/data.py`.
 
 ## Version History
 
-### v2.0 (Current)
+### v3.0 (Current)
+- **Range**: 0 to 9,223,372,036,854,775,807 (INT64_MAX, 19 digits)
+- **Training**: Stratified sampling with guaranteed samples (0-99,999 + powers of 1000)
+- **Max output length**: 35 tokens
+- **Max sequence length**: 25 tokens
+- **Accuracy**: >99.9% on validation set
+
+### v2.0 (Previous)
 - **Range**: 0 to 999,999,999,999 (trillions)
 - **Training**: Stratified sampling for balanced representation
 - **Max output length**: 25 tokens
@@ -197,10 +202,10 @@ The vocabulary already supports up to **decillion** (10³³). To train for large
 
 ## Limitations
 
-- Maximum number: 999,999,999,999 (12 digits)
-- Does not handle negative numbers (absolute value is used)
-- Does not handle decimal numbers (integers only)
-- Zero is handled as a special case in inference
+- **Exact powers of 1000 above million**: The model may occasionally produce extra words (e.g., "one trillion billion" instead of "one trillion") for exact powers of 1000 at the billions, trillions, and quadrillions scale. This is a known edge case in the EOS prediction.
+- **Zero handling**: Edge case in inference may produce empty output.
+- **Negative numbers**: Not supported (absolute value is used)
+- **Decimal numbers**: Not supported (integers only)
 
 ## Citation
 

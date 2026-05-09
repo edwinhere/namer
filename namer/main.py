@@ -59,11 +59,18 @@ def demo_command(args: argparse.Namespace) -> None:
         print(f"  int_to_digits({n}) = {int_to_digits(n)}")
 
 
+# INT64_MAX: 9,223,372,036,854,775,807
+INT64_MAX = 9223372036854775807
+
+
 def train_command(
     num_epochs: int = 30,
     steps_per_epoch: int = 1000,
     batch_size: int = 128,
     learning_rate: float = 0.001,
+    max_int: int = INT64_MAX,
+    max_seq_len: int = 25,
+    max_output_len: int = 35,
 ) -> None:
     """Train the Namer model.
 
@@ -72,6 +79,9 @@ def train_command(
         steps_per_epoch: Number of steps per epoch
         batch_size: Batch size for training
         learning_rate: Learning rate for optimizer
+        max_int: Maximum integer value for training (default: INT64_MAX)
+        max_seq_len: Maximum input sequence length (default: 25 for 19 digits)
+        max_output_len: Maximum output sequence length (default: 35 for large numbers)
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type == "cuda":
@@ -79,17 +89,31 @@ def train_command(
     else:
         print("Warning: CUDA not available, using CPU")
 
-    # Create infinite dataset for training
+    print(f"Training range: 0 to {max_int:,} ({len(str(max_int))} digits)")
+    print(f"Model config: max_seq_len={max_seq_len}, max_output_len={max_output_len}")
+
+    # Create infinite dataset for training with stratified sampling
+    # Includes all numbers 0-99,999 and exact powers of 1000 as guaranteed samples
     infinite_dataset = InfiniteNamerDataset(
-        max_int=999999,
-        max_seq_len=20,
+        max_int=max_int,
+        max_seq_len=max_seq_len,
+        max_output_len=max_output_len,
         seed=42,
+        stratified=True,
+        include_all_until=99999,
     )
+
+    # Calculate guaranteed samples info
+    guaranteed_count = 100000  # 0-99,999
+    powers_of_1000 = [10**3, 10**6, 10**9, 10**12, 10**15, 10**18]
+    extra_powers = sum(1 for p in powers_of_1000 if p > 99999 and p <= max_int)
+    total_guaranteed = guaranteed_count + extra_powers
+    print(f"Guaranteed samples: {total_guaranteed:,} (0-99,999 + {extra_powers} powers of 1000)")
 
     # Create model
     model = NamerTransformer(
         vocab_size=len(VOCABULARY),
-        max_output_len=20,
+        max_output_len=max_output_len,
         d_model=128,
         nhead=4,
         num_encoder_layers=4,
@@ -113,19 +137,31 @@ def train_command(
     # Save model
     save_model(trained_model)
 
-    # Test predictions
+    # Test predictions across all scales
     print("\n--- Model Predictions ---")
     trained_model.eval()
 
-    test_numbers = [123, 4567, 89012, 555555, 999999, 42, 0, 1000]
+    test_numbers = [
+        0, 42, 123, 1000, 999999,  # Small numbers
+        1000000, 999999999,  # Millions
+        1000000000, 999999999999,  # Billions, Trillions
+        1000000000000, 999999999999999,  # Trillions, Quadrillions
+        1000000000000000,  # Quintillion boundary
+    ]
+    # Add INT64_MAX if training for that range
+    if max_int >= INT64_MAX:
+        test_numbers.append(INT64_MAX)
+
     device_obj = next(trained_model.parameters()).device
 
     with torch.no_grad():
         for n in test_numbers:
+            if n > max_int:
+                continue
             pred = predict_number_name(trained_model, n, device_obj)
             actual = read_digits(int_to_digits(n))
             match = "✓" if pred == actual else "✗"
-            print(f"  {n}: pred='{pred}', actual='{actual}' {match}")
+            print(f"  {n:,}: pred='{pred}', actual='{actual}' {match}")
 
 
 def test_command() -> None:
@@ -180,12 +216,27 @@ def main(argv: list[str] | None = None) -> int:
     train_parser.add_argument(
         "--lr", type=float, default=0.001, help="Learning rate (default: 0.001)"
     )
+    train_parser.add_argument(
+        "--max-int", type=int, default=INT64_MAX,
+        help=f"Maximum integer for training (default: {INT64_MAX})"
+    )
+    train_parser.add_argument(
+        "--max-seq-len", type=int, default=25,
+        help="Maximum input sequence length (default: 25 for 19 digits)"
+    )
+    train_parser.add_argument(
+        "--max-output-len", type=int, default=35,
+        help="Maximum output sequence length (default: 35)"
+    )
     train_parser.set_defaults(
         func=lambda args: train_command(
             num_epochs=args.epochs,
             steps_per_epoch=args.steps,
             batch_size=args.batch_size,
             learning_rate=args.lr,
+            max_int=args.max_int,
+            max_seq_len=args.max_seq_len,
+            max_output_len=args.max_output_len,
         )
     )
 
