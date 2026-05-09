@@ -1,6 +1,7 @@
 # Binary model files storage configuration
 # See: https://huggingface.co/docs/hub/xet
-# For HuggingFace: model.safetensors uses Xet (no git-lfs needed)
+
+# For HuggingFace: model.safetensors is stored via Xet for faster downloads
 # For GitHub: namer_model.pt uses git-lfs
 *.pt filter=lfs diff=lfs merge=lfs -text
 model.safetensors filter=lfs diff=lfs merge=lfs -text
