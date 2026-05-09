@@ -40,3 +40,5 @@ Thumbs.db
 namer_model.pt
 .pip-tmp/
 pip-tmp/
+*.safetensors
+*.bin
