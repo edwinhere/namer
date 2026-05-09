@@ -39,3 +39,4 @@ Thumbs.db
 # Project specific
 namer_model.pt
 .pip-tmp/
+pip-tmp/
