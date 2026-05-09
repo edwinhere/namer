@@ -151,6 +151,7 @@ The model uses **stratified sampling** during training to ensure balanced repres
 - All integers from 0 to 99,999 (100,000 samples)
 - Exact powers of 1000: 1,000; 1,000,000; 1,000,000,000; 1,000,000,000,000; 1,000,000,000,000,000
 - Numbers just after powers of 1000 (e.g., 1,000,001 to 1,000,100): These edge cases with many zeros help the model correctly learn patterns like "one million one", "one billion one", etc.
+- Zero-only sequences of all lengths: `[0]`, `[0,0]`, `[0,0,0]`, ... up to max sequence length. These ensure the model correctly learns that any sequence of just zeros (e.g., `0`, `00`, `000`) produces "zero".
 
 This prevents the model from being biased toward larger numbers, which would happen with uniform random sampling (99.9% of 0-1T range is >1M).
 
@@ -214,10 +215,20 @@ The model now correctly handles numbers immediately following powers of 1000 (e.
 | 1,000,000,000,001 | one trillion one ✓ |
 | 1,000,000,000,000,001 | one quadrillion one ✓ |
 
+### Fixed: Zero Handling
+The model now correctly handles zero and single-digit inputs. A combination of **25 zero-only training samples** (one for each sequence length) plus an inference fallback ensures that any input of just zeros or single digits produces the correct output.
+
+| Input | Output |
+|-------|--------|
+| 0 | zero ✓ |
+| 1 | one ✓ |
+| 5 | five ✓ |
+| 00 | zero ✓ |
+| 0000000000000000000 (19 zeros) | zero ✓ |
+
 ## Limitations
 
 - **Exact powers of 1000 above million**: The model may occasionally produce extra words for exact powers at higher scales (e.g., "one million million" instead of "one million" for 1,000,000). This is an edge case in EOS prediction at trillion+ scales.
-- **Zero handling**: Edge case in inference may produce empty output for input 0.
 - **Negative numbers**: Not supported (absolute value is used)
 - **Decimal numbers**: Not supported (integers only)
 

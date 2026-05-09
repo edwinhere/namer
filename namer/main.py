@@ -109,8 +109,10 @@ def train_command(
     extra_powers = sum(1 for p in powers_of_1000 if p > 99999 and p <= max_int)
     # Numbers just after powers of 1000 (100 samples per power, but only those > 99999)
     after_power_samples = sum(min(100, max_int - p) for p in powers_of_1000 if p > 99999 and p < max_int)
-    total_guaranteed = guaranteed_count + extra_powers + after_power_samples
-    print(f"Guaranteed samples: {total_guaranteed:,} (0-99,999 + {extra_powers} powers of 1000 + {after_power_samples} post-power edge cases)")
+    # Zero-only sequences of all lengths (e.g., [0], [0,0], [0,0,0] -> "zero")
+    zero_only_sequences = max_seq_len  # One sequence for each length 1 to max_seq_len
+    total_guaranteed = guaranteed_count + extra_powers + after_power_samples + zero_only_sequences
+    print(f"Guaranteed samples: {total_guaranteed:,} (0-99,999 + {extra_powers} powers of 1000 + {after_power_samples} post-power edge cases + {zero_only_sequences} zero-only sequences)")
 
     # Create model
     model = NamerTransformer(

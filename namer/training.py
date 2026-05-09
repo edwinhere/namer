@@ -43,7 +43,12 @@ def train_namer_model(
     model = model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    criterion = nn.CrossEntropyLoss(ignore_index=-1)
+    # Weight EOS token (last index) more heavily to improve EOS prediction
+    vocab_size = model.vocab_size
+    eos_idx = vocab_size - 1  # EOS is always last
+    weights = torch.ones(vocab_size, device=device)
+    weights[eos_idx] = 5.0  # 5x weight for EOS
+    criterion = nn.CrossEntropyLoss(ignore_index=-1, weight=weights)
 
     print(f"Training on {device}")
     print(f"Early stopping patience: {patience} epochs")

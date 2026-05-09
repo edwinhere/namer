@@ -75,6 +75,7 @@ class InfiniteNamerDataset(IterableDataset):
     Includes guaranteed samples:
     - All numbers from 0 to 99,999
     - Exact powers of 1000 (1,000; 1,000,000; 1,000,000,000; etc.)
+    - Zero-only sequences of all lengths (e.g., 0, 00, 000, 0000) -> "zero"
     """
 
     def __init__(
@@ -161,6 +162,19 @@ class InfiniteNamerDataset(IterableDataset):
 
         return samples
 
+    def _get_zero_only_sequences(self) -> list[list[int]]:
+        """Get zero-only digit sequences of varying lengths.
+
+        Returns:
+            List of digit sequences that are all zeros (e.g., [0], [0,0], [0,0,0])
+            These ensure the model learns that any sequence of just zeros = "zero"
+        """
+        sequences = []
+        # Generate zero-only sequences from length 1 up to max_seq_len
+        for length in range(1, self.max_seq_len + 1):
+            sequences.append([0] * length)
+        return sequences
+
     def _stratified_random_int(self) -> int:
         """Generate a random integer using stratified sampling across number scales.
 
@@ -207,6 +221,7 @@ class InfiniteNamerDataset(IterableDataset):
         """Yield samples infinitely.
 
         First yields all guaranteed samples (0-99,999 and powers of 1000),
+        then yields zero-only sequences of varying lengths,
         then continues with stratified random sampling.
 
         Each worker in multi-worker DataLoader gets its own iterator
@@ -229,12 +244,18 @@ class InfiniteNamerDataset(IterableDataset):
         self.rng.shuffle(self._guaranteed_samples)
         self._guaranteed_index = 0
 
+        # Generate and shuffle zero-only sequences
+        self._zero_only_sequences = self._get_zero_only_sequences()
+        self.rng.shuffle(self._zero_only_sequences)
+        self._zero_only_index = 0
+
         return self
 
     def __next__(self) -> tuple[torch.Tensor, torch.Tensor]:
         """Generate the next sample.
 
-        First yields all guaranteed samples, then stratified random samples.
+        First yields all guaranteed samples, then zero-only sequences,
+        then stratified random samples.
         """
         # Yield guaranteed samples first
         if self._guaranteed_samples and self._guaranteed_index < len(self._guaranteed_samples):
@@ -242,12 +263,22 @@ class InfiniteNamerDataset(IterableDataset):
             self._guaranteed_index += 1
             return self._generate_sample_from_n(n)
 
+        # Then yield zero-only sequences (e.g., [0], [0,0], [0,0,0] -> "zero")
+        if self._zero_only_sequences and self._zero_only_index < len(self._zero_only_sequences):
+            digits = self._zero_only_sequences[self._zero_only_index]
+            self._zero_only_index += 1
+            return self._generate_sample_from_digits(digits)
+
         # Then yield stratified random samples
         return self._generate_sample()
 
     def _generate_sample_from_n(self, n: int) -> tuple[torch.Tensor, torch.Tensor]:
         """Generate a sample for a specific integer n."""
         digits = int_to_digits(n)
+        return self._generate_sample_from_digits(digits)
+
+    def _generate_sample_from_digits(self, digits: list[int]) -> tuple[torch.Tensor, torch.Tensor]:
+        """Generate a sample from a specific digit sequence."""
         name = read_digits(digits)
         encoded = encode(name)
 
