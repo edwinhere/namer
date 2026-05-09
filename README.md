@@ -11,7 +11,12 @@ tags:
 
 # Namer
 
+[![HuggingFace](https://img.shields.io/badge/🤗_HuggingFace-Model_Card-yellow)](https://huggingface.co/edwinhere/namer)
+[![GitHub](https://img.shields.io/badge/🐙_GitHub-Source_Code-blue)](https://github.com/edwinhere/namer)
+
 A PyTorch transformer model that converts **integers to their English names** (e.g., `42` → "forty two", `123` → "one hundred twenty three").
+
+> 🔗 **This repository is mirrored on both [HuggingFace](https://huggingface.co/edwinhere/namer) and [GitHub](https://github.com/edwinhere/namer). Use whichever you prefer!**
 
 ## Model Description
 
@@ -87,10 +92,25 @@ python -m namer train
 
 ## Installation
 
+Choose either repository — both have identical code:
+
+**Option 1: Clone from HuggingFace**
 ```bash
 git clone https://huggingface.co/edwinhere/namer
 cd namer
 pip install -e .
+```
+
+**Option 2: Clone from GitHub**
+```bash
+git clone https://github.com/edwinhere/namer.git
+cd namer
+pip install -e .
+```
+
+**Option 3: Direct pip install (from GitHub)**
+```bash
+pip install git+https://github.com/edwinhere/namer.git
 ```
 
 ## Citation
@@ -107,4 +127,7 @@ If you use this model, please cite:
 
 ## Links
 
-- [GitHub Repository](https://github.com/edwinhere/namer)
+| Platform | URL | Purpose |
+|----------|-----|---------|
+| 🤗 HuggingFace | [huggingface.co/edwinhere/namer](https://huggingface.co/edwinhere/namer) | Model card, inference API, downloads |
+| 🐙 GitHub | [github.com/edwinhere/namer](https://github.com/edwinhere/namer) | Source code, issues, development |
